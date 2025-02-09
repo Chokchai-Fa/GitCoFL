@@ -6,7 +6,10 @@ class CentralizedFL(FederatedLearning):
         """
         Initializes centralized federated learning.
         :param repo_path: Path to the Git repository for the centralized model.
+        :param git_repo_url: URL of the Git repository.
+        :param access_token: Access token for the Git repository.
         :param interval: Time interval to check for global weights.
+        :param training_function: The function to run for each training round.
         """
         super().__init__(interval=interval)
         self.repo_path = repo_path
