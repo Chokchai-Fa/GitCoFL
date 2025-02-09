@@ -1,0 +1,33 @@
+from .core import FederatedLearning
+from .git_module import GitModule
+
+class CentralizedFL(FederatedLearning):
+    def __init__(self, repo_path, interval=10, training_function=None):
+        """
+        Initializes centralized federated learning.
+        :param repo_path: Path to the Git repository for the centralized model.
+        :param interval: Time interval to check for global weights.
+        """
+        super().__init__(interval=interval)
+        self.repo_path = repo_path
+        self.git = GitModule(repo_path)
+
+        self.training_function = training_function
+
+    def pull_global_weights(self, client_branch: str):
+        """Pulls the latest global weights from the central repository."""
+        print("Pulling global weights from central repository...")
+        self.git.pull_global_weights(branch_name=client_branch)
+
+    def push_local_weights(self):
+        """Pushes local weights to the central repository."""
+        print("Pushing local weights to central repository...")
+        self.git.push()
+
+    def train(self):
+        """Trains the model on the local client."""
+        print("Training model locally in a centralized setup...")
+
+    def aggregate(self):
+        """Aggregates weights on the central server."""
+        print("Aggregating weights on the central server.")
