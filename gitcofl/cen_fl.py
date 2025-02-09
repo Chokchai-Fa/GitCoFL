@@ -2,7 +2,7 @@ from .core import FederatedLearning
 from .git_module import GitModule
 
 class CentralizedFL(FederatedLearning):
-    def __init__(self, repo_path, interval=10, training_function=None):
+    def __init__(self, repo_path, git_repo_url, access_token, interval=10, training_function=None):
         """
         Initializes centralized federated learning.
         :param repo_path: Path to the Git repository for the centralized model.
@@ -10,7 +10,9 @@ class CentralizedFL(FederatedLearning):
         """
         super().__init__(interval=interval)
         self.repo_path = repo_path
-        self.git = GitModule(repo_path)
+        self.git_repo_url = git_repo_url
+        self.access_token = access_token
+        self.git = GitModule(repo_path, git_repo_url, access_token)
 
         self.training_function = training_function
 
