@@ -2,7 +2,7 @@ from .core import FederatedLearning
 from .git_module import GitModule
 
 class CentralizedFL(FederatedLearning):
-    def __init__(self, repo_path, git_repo_url, access_token, interval=10, training_function=None):
+    def __init__(self, repo_path, git_repo_url, access_token, interval=10, training_function=None, test_function=None):
         """
         Initializes centralized federated learning.
         :param repo_path: Path to the Git repository for the centralized model.
@@ -18,6 +18,7 @@ class CentralizedFL(FederatedLearning):
         self.git = GitModule(repo_path, git_repo_url, access_token)
 
         self.training_function = training_function
+        self.test_function = test_function
 
     def pull_global_weights(self, client_branch: str):
         """Pulls the latest global weights from the central repository."""

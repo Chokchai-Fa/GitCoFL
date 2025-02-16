@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from .scheduler import DefaultScheduler
 
 class FederatedLearning(ABC):
-    def __init__(self, repo_path=None, git_repo_url=None, access_token=None, interval=10, training_function=None, scheduler=None):
+    def __init__(self, repo_path=None, git_repo_url=None, access_token=None, interval=10, training_function=None, test_function= None,scheduler=None):
         """
         Initializes federated learning with an optional custom scheduler.
         :param repo_path: Path to the Git repository
@@ -16,6 +16,7 @@ class FederatedLearning(ABC):
         self.git_repo_url = git_repo_url
         self.access_token = access_token
         self.training_function = training_function or self.default_training_round
+        self.test_function = test_function or self.default_testing_round
         self.scheduler = scheduler or DefaultScheduler(interval=interval, task=self.training_function)
 
     @abstractmethod
@@ -35,7 +36,10 @@ class FederatedLearning(ABC):
         pass
 
     def default_training_round(self):
-        print("Performing a federated learning round...")
+        print("Performing a training federated learning round...")
+    
+    def default_testing_round(self):
+        print("Performing a testing federated learning round...")
 
     def start(self):
         print("Starting federated learning with scheduling...")
