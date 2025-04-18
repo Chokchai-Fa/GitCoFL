@@ -14,9 +14,10 @@ import copy
 
 ## constants
 global_model_pattern = '*-global_weight.pth'
+decen_model_pattern = '*-decen_merged_weight.pth'
 
 # load_model represents the function that loads the model from the previous round, it wikk return the model and a boolean value that indicates if the model was loaded successfully
-def load_model(model, device, count_fl_round, repo_path):
+def load_model(model, device, count_fl_round, model_path, fl_type):
     net = model.to(device)
     ## case first round of clients, load empy model
     if count_fl_round == 1:
@@ -24,23 +25,30 @@ def load_model(model, device, count_fl_round, repo_path):
         return net, True
     ## case load global weights (another round)
     else:
-        directory_path = f"{repo_path}/round{count_fl_round-1}"
-        if os.path.exists(directory_path) and os.path.isdir(directory_path):
-            matching_files = glob.glob(os.path.join(directory_path, global_model_pattern))
+        if os.path.exists(model_path) and os.path.isdir(model_path):
+            if fl_type == "cen":
+                matching_files = glob.glob(os.path.join(model_path, global_model_pattern))
+            else:
+                matching_files = glob.glob(os.path.join(model_path, decen_model_pattern))
+
             if matching_files:
                 file_to_open = matching_files[0]
                 net.load_state_dict(torch.load(file_to_open))
 
+                # Todo: check about input size, should it dynamically config?
                 print(summary_info(net, input_size = (32, 3, 32, 32))) # (batchsize,channel,width,height)
                 net = net.to(device)
                 print(f"model loaded from {file_to_open}")
 
-                # scheduler optmization
-                # meta_data_path = os.path.join(directory_path, "meta_data.json")
-                # with open(meta_data_path, "r") as json_file:
-                #     data = json.load(json_file)
-                    # exec_time = data.get(f'client-{client_id}')
-
+                # Remove all matching files
+                if fl_type == "decen":
+                    for f in matching_files:
+                        try:
+                            os.remove(f)
+                            print(f"Deleted temp aggregated model file: {f}")
+                        except Exception as e:
+                            print(f"Failed to delete {f}: {e}")
+                    
                 return net, True
             
         return None, False
@@ -165,23 +173,20 @@ def test(net, testloader, criterion, device):
 
         return test_loss, accuracy, len(testloader.dataset)
     
-def save_model(net ,directory_path, client_id):
+def save_model(net ,model_path, client_id):
     current_datetime = datetime.now()
     timestamp = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
-    torch.save(net.state_dict(), os.path.join(directory_path, f'{timestamp}-weight-client-{client_id}.pth'))
+    torch.save(net.state_dict(), os.path.join(model_path, f'{timestamp}-weight-client-{client_id}.pth'))
 
-
-def agg_fed_avg(local_models: list, model, directory_path: str):
+def agg_fed_avg(local_models: list, model, model_path: str, fl_type: str):
     """
     Perform FedAvg aggregation on the local models.
     """
     global_model = copy.deepcopy(model)
 
-    # global_state_dict = copy.deepcopy(global_model.state_dict())
-
     for weight_file in local_models:
         client_model = model
-        client_model.load_state_dict(torch.load(os.path.join(directory_path, weight_file)))
+        client_model.load_state_dict(torch.load(os.path.join(model_path, weight_file)))
 
         for global_param, client_param in zip(global_model.parameters(), client_model.parameters()):
             global_param.data += client_param.data
@@ -193,8 +198,11 @@ def agg_fed_avg(local_models: list, model, directory_path: str):
     current_datetime = datetime.now()
     timestamp = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
 
-    new_weight_file = f'{timestamp}-global_weight.pth'
+    if fl_type == "cen":
+        new_weight_file = f'{timestamp}-global_weight.pth'
+    else:
+        new_weight_file = f'{timestamp}-decen_merged_weight.pth'
 
-    torch.save(global_model.state_dict(), os.path.join(directory_path, new_weight_file))
+    torch.save(global_model.state_dict(), os.path.join(model_path, new_weight_file))
 
     return new_weight_file

@@ -35,6 +35,9 @@ class CentralizedFLClient(FLClient):
         print("Pulling global weights from central repository...")
         self.git.pull_global_weights(branch_name="main")
 
+    def after_pull_global_weights(self):
+        pass
+
     def push_local_weights(self):
         """Pushes local weights to the central repository."""
         print("Pushing local weights to central repository...")
@@ -46,9 +49,12 @@ class CentralizedFLClient(FLClient):
         self.count_fl_round += 1
 
     def load_weights(self):
+        model_path = f"{self.repo_path}/round{self.count_fl_round-1}"
         if self.model_library == "pytorch":
-            self.net, is_loaded = pytorch_connector.load_model(self.model, self.device, self.count_fl_round, self.repo_path)
+            self.net, is_loaded = pytorch_connector.load_model(self.model, self.device, self.count_fl_round, model_path, 'cen')
             return is_loaded
+        else:
+            self.raiseUnknownModelLibrary()
 
     def train(self):
         """Trains the model on the local client."""
@@ -62,21 +68,30 @@ class CentralizedFLClient(FLClient):
                 self.local_epochs,
                 self.device
             )
+        else:
+            self.raiseUnknownModelLibrary()
 
     def test(self):
         """Tests the model on the local client."""
         print("Testing model locally in a centralized setup...")
         if self.model_library == "pytorch":
             pytorch_connector.test(self.net, self.test_loader, self.criterion, self.device)
+        else:
+             self.raiseUnknownModelLibrary()
 
     def save_weight(self):
         """Saves the trained model weights to the local client."""
-       
         directory_path = f"{self.repo_path}/round{self.count_fl_round}"
         os.makedirs(directory_path, exist_ok=True)
         if self.model_library == "pytorch":
             pytorch_connector.save_model(self.net, directory_path, self.client_id)
-        print("Saving model weight locally successfully...")
+            print("Saving model weight locally successfully...")
+        else:
+            self.raiseUnknownModelLibrary()
+        
+    def raiseUnknownModelLibrary(self):
+        print(f"Unknown model library: {self.model_library}.")
+        raise ValueError(f"Unknown model library: {self.model_library}.")
 
 class CentralizedFLServer():
     def __init__(self, repo_path, git_repo_url, git_email, access_token, model_library, model, fl_algorithm, total_fl_rounds, number_of_client, interval=10):
@@ -120,14 +135,18 @@ class CentralizedFLServer():
         print("Aggregating all weights on the central server.")
         if self.fl_algorithm == "FedAvg":
             self.aggregate_fed_avg()
+        else:
+            self.raiseUnknownModelLibrary()
 
     def aggregate_fed_avg(self):
         """Aggregates weights using the FedAvg algorithm."""
         print("Aggregating weights using FedAvg algorithm...")
         if self.model_library == "pytorch":
             round_path = os.path.join(self.repo_path, f'round{self.count_fl_round}')
-            self.new_global_weight = pytorch_connector.agg_fed_avg(self.client_weights, self.model, round_path)
-
+            self.new_global_weight = pytorch_connector.agg_fed_avg(self.client_weights, self.model, round_path, 'cen')
+        else:
+            self.raiseUnknownModelLibrary
+        
     def push_global_weights(self):
         """Pushes the global weights to the central repository."""
         print("Pushing new global weights to the central repository...")
@@ -137,6 +156,10 @@ class CentralizedFLServer():
             file='*',
             commit_message=f'push global weight round {self.count_fl_round} from server'
         )
+    
+    def raiseUnknownModelLibrary(self):
+        print(f"Unknown model library: {self.model_library}.")
+        raise ValueError(f"Unknown model library: {self.model_library}.")
 
     def process(self):
         """Processes a single round of federated learning."""

@@ -86,6 +86,7 @@ class GitModule:
             self.repo.git.branch(branch_name)
         self.repo.git.checkout(branch_name)
 
+    # This method is used to pull local weights from the Git repository, using by centralliezed FL server and decentralized FL client
     def pull_local_weights(self, branch_merge_to: str):
         """Pulls the local weights from the Git repository."""
         self.repo.config_writer().set_value("user", "email", self.git_email).release()
