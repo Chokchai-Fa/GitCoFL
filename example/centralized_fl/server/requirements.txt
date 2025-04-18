@@ -1,0 +1,11 @@
+torch
+torchvision
+# scikit-learn
+tqdm
+# matplotlib
+python-dotenv
+schedule
+# torchinfo
+# requests
+GitPython
+numpy
