@@ -11,6 +11,10 @@ class FLClient(ABC):
         self.scheduler = scheduler or DefaultScheduler(interval=interval, task=self.process)
 
     @abstractmethod
+    def validate_parameter(self):
+        pass
+
+    @abstractmethod
     def pull_global_weights(self):
         pass
 
@@ -55,8 +59,6 @@ class FLClient(ABC):
             if self.count_fl_round > self.total_fl_rounds:
                 print("Total number of rounds reached. Stopping the scheduler...")
                 self.scheduler.stop()
-
-            
         else:
             print("global weights not comming yet. Skipping to next schedule...")
 

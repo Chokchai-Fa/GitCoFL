@@ -29,6 +29,12 @@ class CentralizedFLClient(FLClient):
         self.client_branch = f"client_{self.client_id}"
         self.count_fl_round = 1
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.validate_parameter()
+    
+    def validate_parameter(self):
+        """Validates the parameters for decentralized federated learning."""
+        # To Do: Implement parameter validation logic
+        pass
 
     def pull_global_weights(self):
         """Pulls the latest global weights from the central repository."""
@@ -114,6 +120,12 @@ class CentralizedFLServer():
         self.scheduler = DefaultScheduler(interval=interval, task=self.process)
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.interval = interval
+        self.validate_parameter()
+
+    def validate_parameter(self):
+        """Validates the parameters for decentralized federated learning."""
+        # To Do: Implement parameter validation logic
+        pass
 
     def pull_all_client_weights(self):
         """Pulls all client weights from the central repository."""

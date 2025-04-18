@@ -34,6 +34,9 @@ class DecentralizedFL(FLClient):
         self.sampling_no = sampling_no
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
+    def validate_parameter(self):
+        pass
+
     def pull_global_weights(self):
         """Pulls global weights from peer repositories."""
         print('Pulling all client weights from central repository...')

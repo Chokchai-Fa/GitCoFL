@@ -1,27 +1,34 @@
-
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 class CNN(nn.Module):
     def __init__(self):
-        super().__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5) # 3 input channels, 6 output channels, 5*5 kernel size
-        self.pool = nn.MaxPool2d(2, 2) # 2*2 kernel size, 2 strides
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(400, 120) # dense input 400 (16*5), output 120
+        super(CNN, self).__init__()
+        self.network = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=3, padding=1),  # Input channels = 3, output channels = 32
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),  # 64 channels
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),  # Reduces spatial size: 64 x 16 x 16
+            
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),  # 128 channels
+            nn.ReLU(),
+            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),  # Reduces spatial size: 128 x 8 x 8
 
-        self.fc2 = nn.Linear(120, 84) # dense input 120, output 84
-        self.fc3 = nn.Linear(84, 10) # dense input 84, output 10
-        self.softmax = torch.nn.Softmax(dim=1) # perform softmax at dim[1] (batch,class)
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = torch.flatten(x,start_dim=1) # flatten all dimensions (dim[1]) except batch (dim[0])
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        x = self.softmax(x)
-        return x
-    
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),  # 256 channels
+            nn.ReLU(),
+            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),  # Reduces spatial size: 256 x 4 x 4
+            
+            nn.Flatten(),  # Flatten the tensor for fully connected layers
+            nn.Linear(256*4*4, 1024),  # Input size 256*4*4, output size 1024
+            nn.ReLU(),
+            nn.Linear(1024, 512),  # Input size 1024, output size 512
+            nn.ReLU(),
+            nn.Linear(512, 10)  # Final layer for 10 output classes
+        )
+        
+    def forward(self, xb):
+        return self.network(xb)

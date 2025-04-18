@@ -54,13 +54,14 @@ def load_model(model, device, count_fl_round, model_path, fl_type):
         return None, False
 
 # train represents the function that trains the model on the local client
-def train(net, trainloader, valloader, local_epochs, device):
+def train(net, trainloader, valloader, local_epochs, device, patience=5):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=1e-2, momentum=0.9)
 
     history_train = {'loss':np.zeros(local_epochs), 'acc':np.zeros(local_epochs), 'f1-score':np.zeros(local_epochs)}
     history_val = {'loss':np.zeros(local_epochs), 'acc':np.zeros(local_epochs), 'f1-score':np.zeros(local_epochs)}
     min_val_loss = 1e10
+    patience_counter = 0
 
     for epoch in range(local_epochs):
         print(f'epoch {epoch + 1} \nTraining ...')
@@ -87,7 +88,7 @@ def train(net, trainloader, valloader, local_epochs, device):
             y_predict += list(outputs.argmax(dim=1).cpu().numpy())
 
         # print statistics
-        report = classification_report(y_labels, y_predict, digits = 4, output_dict = True)
+        report = classification_report(y_labels, y_predict, digits=4, output_dict=True, zero_division=0)
         acc = report["accuracy"]
         f1 = report["weighted avg"]["f1-score"]
         support = report["weighted avg"]["support"]
@@ -132,6 +133,14 @@ def train(net, trainloader, valloader, local_epochs, device):
         if validation_loss < min_val_loss:
             # torch.save(net.state_dict(), MODE_PATH)
             min_val_loss = validation_loss
+            patience_counter = 0
+        else:
+            patience_counter += 1
+            print(f'No improvement for {patience_counter} epoch(s)')
+
+        if patience_counter >= patience:
+            print(f"Early stopping triggered after {epoch+1} epochs.")
+            break
 
     print('Finished Training')
 
