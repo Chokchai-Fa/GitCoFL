@@ -9,5 +9,5 @@ docker build -f example/decentralized_fl/client/Dockerfile -t gitcofl-decentrali
 
 echo "Docker image 'gitcofl-decentralized-client' built successfully!"
 echo ""
-echo "To run the container:"
-echo "docker run --env-file example/decentralized_fl/client/.env gitcofl-decentralized-client"
+echo "To run the container with GPU support:"
+echo "docker run --gpus all --env-file example/decentralized_fl/client/.env gitcofl-decentralized-client"
