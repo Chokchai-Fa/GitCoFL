@@ -32,7 +32,7 @@ def monitor_network():
     try:
         # psutil doesn't directly provide per-process network stats
         # We'll use netstat or ss command to track connections for this process
-        connections = process.connections(kind='inet')
+        connections = process.net_connections(kind='inet')
         # Count initial connections
         initial_connections = len(connections)
         last_connection_count = initial_connections
@@ -75,7 +75,7 @@ def monitor_network():
             
             # Get current network connections for this process
             try:
-                connections = process.connections(kind='inet')
+                connections = process.net_connections(kind='inet')
                 connection_count = len(connections)
                 
                 # If connections changed, estimate data transfer
@@ -156,8 +156,8 @@ fl = DecentralizedFL(
     train_loader=trainloader,
     test_loader=valloader,
     val_loader=valloader,
-    local_epochs=1,
-    total_fl_rounds=1,
+    local_epochs=10
+    total_fl_rounds=5,
     sampling_no=int(os.environ.get('SAMPLE_NO')),
     interval=FL_INTERVAL)
 
