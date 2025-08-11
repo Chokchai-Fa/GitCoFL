@@ -8,3 +8,4 @@ schedule
 torchinfo
 GitPython
 numpy
+psutil
