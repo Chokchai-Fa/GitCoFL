@@ -46,15 +46,28 @@ class DecentralizedFL(FLClient):
         round_path = os.path.join(self.repo_path, f'round{self.weights_to_merge_round}')
         try:
             weight_files = [file for file in os.listdir(round_path) if 'weight-client' in file]
-            print(weight_files)
-        except:
-            print(f"No weight files found in round {self.count_fl_round}.")
-
-        self.client_weights = weight_files if len(weight_files) >= self.sampling_no else None
+            print(f"Found {len(weight_files)} weight files: {weight_files}")
+            
+            if len(weight_files) > 0:
+                # Set client weights even if we don't have enough samples yet
+                # This allows partial aggregation when some clients are slow
+                self.client_weights = weight_files
+                
+                # Check if we have enough weights for sampling
+                if len(weight_files) < self.sampling_no:
+                    print(f"Warning: Only found {len(weight_files)} weight files, but sampling_no is {self.sampling_no}.")
+                    print(f"Will use all available weight files instead of sampling.")
+        except Exception as e:
+            print(f"Error accessing weight files in round {self.weights_to_merge_round}: {str(e)}")
     
     def after_pull_global_weights(self):
         """After pulling global weights, aggregate the model weights to the local repository."""
-        self.aggregate()
+        # Only proceed with aggregation if we have client weights to aggregate
+        if self.client_weights:
+            print(f"Proceeding with aggregation using {len(self.client_weights)} client weights.")
+            self.aggregate()
+        else:
+            print("No client weights available for aggregation. Skipping aggregation step.")
 
     def push_local_weights(self):
         """Pushes local weights to peer repositories."""
@@ -119,7 +132,22 @@ class DecentralizedFL(FLClient):
     def aggregate_fed_avg(self):
         """Performs decentralized aggregation with peers."""
         print("Performing decentralized aggregation by fed avg algorithm...")
-        sampled_weights = random.sample(self.client_weights, int(self.sampling_no))
+        
+        # Check if we have client weights to aggregate
+        if not self.client_weights:
+            print("No client weights available for aggregation.")
+            return
+            
+        # If we have fewer weights than required for sampling, use all available weights
+        if len(self.client_weights) < self.sampling_no:
+            print(f"Warning: Only {len(self.client_weights)} weights available, but sampling_no is {self.sampling_no}.")
+            print(f"Using all available weights instead of sampling.")
+            sampled_weights = self.client_weights
+        else:
+            sampled_weights = random.sample(self.client_weights, int(self.sampling_no))
+            
+        print(f"Aggregating {len(sampled_weights)} weight files: {sampled_weights}")
+        
         if self.model_library == "pytorch":
             round_path = os.path.join(self.repo_path, f'round{self.weights_to_merge_round}')
             self.new_global_weight = pytorch_connector.agg_fed_avg(sampled_weights, self.model, round_path, 'decen')

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from .scheduler import DefaultScheduler
+import traceback
 
 class FLClient(ABC):
     def __init__(self, interval=10, scheduler=None):
@@ -46,8 +47,9 @@ class FLClient(ABC):
         try:
             self.pull_global_weights()
             self.after_pull_global_weights()
-        except:
-            pass
+        except Exception as e:
+            print(f"Error during pull and aggregation process: {str(e)}")
+            traceback.print_exc()
 
         is_loaded = self.load_weights()
         if is_loaded:

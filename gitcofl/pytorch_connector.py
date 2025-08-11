@@ -33,12 +33,18 @@ def load_model(model, device, count_fl_round, model_path, fl_type):
 
             if matching_files:
                 file_to_open = matching_files[0]
-                net.load_state_dict(torch.load(file_to_open))
-
-                # Todo: check about input size, should it dynamically config?
-                print(summary_info(net, input_size = (32, 3, 32, 32))) # (batchsize,channel,width,height)
-                net = net.to(device)
-                print(f"model loaded from {file_to_open}")
+                try:
+                    # Load with appropriate device mapping to handle models saved on different devices
+                    state_dict = torch.load(file_to_open, map_location=device)
+                    net.load_state_dict(state_dict)
+                    
+                    # Todo: check about input size, should it dynamically config?
+                    print(summary_info(net, input_size = (32, 3, 32, 32))) # (batchsize,channel,width,height)
+                    net = net.to(device)
+                    print(f"Model successfully loaded from {file_to_open} to {device}")
+                except Exception as e:
+                    print(f"Error loading model from {file_to_open}: {str(e)}")
+                    return None, False
 
                 # Remove all matching files
                 if fl_type == "decen":
@@ -182,27 +188,58 @@ def test(net, testloader, criterion, device):
 
         return test_loss, accuracy, len(testloader.dataset)
     
-def save_model(net ,model_path, client_id):
+def save_model(net, model_path, client_id):
     current_datetime = datetime.now()
     timestamp = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
-    torch.save(net.state_dict(), os.path.join(model_path, f'{timestamp}-weight-client-{client_id}.pth'))
+    file_path = os.path.join(model_path, f'{timestamp}-weight-client-{client_id}.pth')
+    
+    try:
+        # Save with CPU as the target device to ensure compatibility
+        device_cpu = torch.device('cpu')
+        cpu_state_dict = {k: v.to(device_cpu) for k, v in net.state_dict().items()}
+        torch.save(cpu_state_dict, file_path)
+        print(f"Model saved to {file_path} (device-agnostic format)")
+    except Exception as e:
+        print(f"Error saving model to {file_path}: {str(e)}")
 
 def agg_fed_avg(local_models: list, model, model_path: str, fl_type: str):
     """
     Perform FedAvg aggregation on the local models.
     """
+    # Detect device
+    device = next(model.parameters()).device
+    print(f"Aggregating models on device: {device}")
+    
     global_model = copy.deepcopy(model)
-
+    success_count = 0
+    
     for weight_file in local_models:
-        client_model = model
-        client_model.load_state_dict(torch.load(os.path.join(model_path, weight_file)))
+        try:
+            client_model = copy.deepcopy(model)
+            # Use map_location to ensure tensors are loaded to the correct device
+            state_dict = torch.load(os.path.join(model_path, weight_file), map_location=device)
+            client_model.load_state_dict(state_dict)
 
-        for global_param, client_param in zip(global_model.parameters(), client_model.parameters()):
-            global_param.data += client_param.data
+            # Add parameters to global model
+            for global_param, client_param in zip(global_model.parameters(), client_model.parameters()):
+                global_param.data += client_param.data
+                
+            success_count += 1
+            print(f"Successfully loaded and added model from {weight_file}")
+        except Exception as e:
+            print(f"Error loading model from {weight_file}: {str(e)}")
+            continue
 
-    num_clients = len(local_models)
+    # Check if we loaded any models successfully
+    if success_count == 0:
+        print("No models were successfully loaded for aggregation")
+        return None
+        
+    # Average the parameters
     for global_param in global_model.parameters():
-        global_param.data /= num_clients
+        global_param.data /= success_count
+    
+    print(f"Successfully aggregated {success_count} models out of {len(local_models)} total")
 
     current_datetime = datetime.now()
     timestamp = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
@@ -211,7 +248,17 @@ def agg_fed_avg(local_models: list, model, model_path: str, fl_type: str):
         new_weight_file = f'{timestamp}-global_weight.pth'
     else:
         new_weight_file = f'{timestamp}-decen_merged_weight.pth'
-
-    torch.save(global_model.state_dict(), os.path.join(model_path, new_weight_file))
+    
+    file_path = os.path.join(model_path, new_weight_file)
+    
+    try:
+        # Convert model to CPU before saving to ensure device compatibility
+        device_cpu = torch.device('cpu')
+        cpu_state_dict = {k: v.to(device_cpu) for k, v in global_model.state_dict().items()}
+        torch.save(cpu_state_dict, file_path)
+        print(f"Aggregated model saved to {file_path} (device-agnostic format)")
+    except Exception as e:
+        print(f"Error saving aggregated model to {file_path}: {str(e)}")
+        return None
 
     return new_weight_file
